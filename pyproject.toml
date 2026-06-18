@@ -1,7 +1,7 @@
 [project]
-name = "log2sigma"
+name = "threatsight"
 version = "0.1.0"
-description = "Turns log anomalies into tested, ATT&CK-mapped Sigma detection rules."
+description = "ThreatSight: a WAF/web-log threat analyzer that detects attack patterns and produces MITRE ATT&CK-mapped threat reports."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,7 +14,7 @@ dependencies = [
 dev = ["pytest>=8.0", "ruff>=0.5", "mypy>=1.10"]
 
 [project.scripts]
-log2sigma = "log2sigma.cli:app"
+threatsight = "threatsight.cli:app"
 
 [build-system]
 requires = ["hatchling"]
