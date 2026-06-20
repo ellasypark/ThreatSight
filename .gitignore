@@ -6,6 +6,8 @@ venv/
 *.egg-info/
 dist/
 build/
+data/attack/
+
 
 # Tooling
 .mypy_cache/
@@ -16,3 +18,5 @@ build/
 .vscode/
 .idea/
 .DS_Store
+
+
