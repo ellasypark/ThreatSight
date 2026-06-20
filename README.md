@@ -58,13 +58,18 @@ data/attack/     # cached ATT&CK STIX dataset (gitignored, ~40 MB)
 reports/         # generated triage report
 ```
 
-## Quickstart
+## Install & use
 
 ```bash
-pip install mitreattack-python polars pydantic numpy tzdata
+# install (pulls dependencies and gives you the `threatsight` command)
+pip install .
 
-python -m threatsight.generate   # make sample logs (normal + 2 attacks)
-python -m threatsight.report      # analyse -> reports/triage-report.md
+# generate sample logs, then analyze any web/WAF access log
+threatsight generate
+threatsight analyze data/sample/access.log                 # markdown threat report
+threatsight analyze data/sample/access.log --format json   # machine-readable
+threatsight analyze /var/log/nginx/access.log -o report.md # analyze your own log -> file
 ```
 
-> First run downloads the official ATT&CK STIX dataset (~40 MB) into `data/attack/` and caches it.
+> First analysis downloads the official ATT&CK STIX dataset (~40 MB) into `data/attack/` and
+> caches it. (No install? Run the same commands as `python -m threatsight.cli analyze ...`.)
