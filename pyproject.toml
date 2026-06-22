@@ -1,16 +1,19 @@
 [project]
 name = "threatsight"
 version = "0.1.0"
-description = "ThreatSight: a WAF/web-log threat analyzer (signature + anomaly) mapped to MITRE ATT&CK."
+description = "ThreatSight: a WAF/web-log threat analyzer (signature + anomaly + LLM) mapped to MITRE ATT&CK, with a web dashboard."
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "typer>=0.12",              # CLI
     "polars>=1.0",              # fast log processing
-    "pydantic>=2.7",            # log schema validation
+    "pydantic>=2.7",            # log + LLM schema validation
     "numpy>=1.26",              # anomaly statistics
     "tzdata>=2024.1",           # timezone DB (needed on Windows)
     "mitreattack-python>=3.0",  # ATT&CK STIX enrichment
+    "openai>=1.50",             # LLM declarative extraction
+    "fastapi>=0.110",           # web server
+    "uvicorn>=0.29",            # ASGI server to run FastAPI
 ]
 
 [project.optional-dependencies]
