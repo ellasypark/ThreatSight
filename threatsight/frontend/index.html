@@ -1,0 +1,53 @@
+<!doctype html><html><head><meta charset="utf-8"><title>ThreatSight</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+body{font-family:system-ui,sans-serif;max-width:1000px;margin:24px auto;padding:0 16px;color:#1b1b1a;background:#faf9f5}
+h1{font-size:22px;font-weight:600;margin-bottom:2px}.sub{color:#6b6a64;margin-bottom:16px}
+.bar{display:flex;gap:8px;margin-bottom:20px}.bar input{flex:1;padding:8px 10px;border:1px solid #d9d7cf;border-radius:8px}
+.bar button{padding:8px 16px;border:1px solid #534AB7;background:#534AB7;color:#fff;border-radius:8px;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.card{background:#fff;border:1px solid #e7e5dd;border-radius:12px;padding:16px}
+.lbl{font-size:13px;color:#6b6a64}.num{font-size:26px;font-weight:600;margin-top:4px}
+.panel{background:#fff;border:1px solid #e7e5dd;border-radius:12px;padding:16px;margin-bottom:24px}
+.panel h2{font-size:14px;font-weight:600;margin:0 0 12px;color:#444}
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e7e5dd;border-radius:8px;margin-bottom:8px}
+.sev{font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px}
+.sP1{background:#FCEBEB;color:#791F1F}.sP2{background:#FAEEDA;color:#633806}.sP3{background:#E6F1FB;color:#0C447C}.sINFO{background:#F1EFE8;color:#444441}
+.nm{font-weight:600}.ip{font-family:monospace;color:#6b6a64;font-size:13px}.meta{margin-left:auto;font-size:12px;color:#6b6a64}
+canvas{max-height:220px}
+</style></head><body>
+<h1>ThreatSight</h1>
+<div class="sub">WAF/web-log threat analyzer &middot; signature + anomaly &middot; MITRE ATT&CK</div>
+<div class="bar"><input id="log" value="data/sample/access.log"><button onclick="load()">Analyze</button></div>
+<div class="grid" id="cards"></div>
+<div class="panel"><h2>Activity timeline (events per hour)</h2><canvas id="tl"></canvas></div>
+<div class="panels">
+  <div class="panel" style="margin:0"><h2>Severity</h2><canvas id="sev"></canvas></div>
+  <div class="panel" style="margin:0"><h2>Detection layer</h2><canvas id="lay"></canvas></div>
+</div>
+<div class="panel"><h2>Detections by technique</h2><canvas id="tech"></canvas></div>
+<div class="panel"><h2>Recent detections</h2><div id="feed"></div></div>
+<script>
+const SEV={P1:'#E24B4A',P2:'#EF9F27',P3:'#378ADD',INFO:'#888780'};
+let charts={};
+function donut(id,obj,colors){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:Object.keys(obj),datasets:[{data:Object.values(obj),backgroundColor:colors,borderWidth:0}]},options:{cutout:'60%'}});}
+async function load(){
+  const log=document.getElementById('log').value;
+  const r=await fetch('/api/analyze?log='+encodeURIComponent(log));
+  const d=await r.json();
+  if(d.error){document.getElementById('cards').innerHTML='<div class="card">'+d.error+'</div>';return;}
+  document.getElementById('cards').innerHTML=[
+    ['Events analysed',d.events],['Detections',d.detections],['Critical (P1)',d.p1],
+    ['Attacker IPs',d.attacker_ips],['ATT&CK techniques',d.techniques]
+  ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="num">${v}</div></div>`).join('');
+  if(charts.tl)charts.tl.destroy();
+  charts.tl=new Chart(document.getElementById('tl'),{type:'line',data:{labels:Object.keys(d.timeline),datasets:[{data:Object.values(d.timeline),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,.15)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  donut('sev',d.severity,Object.keys(d.severity).map(s=>SEV[s]||'#888'));
+  donut('lay',d.by_layer,['#534AB7','#1D9E75']);
+  if(charts.tech)charts.tech.destroy();
+  charts.tech=new Chart(document.getElementById('tech'),{type:'bar',data:{labels:Object.keys(d.by_technique),datasets:[{data:Object.values(d.by_technique),backgroundColor:'#534AB7'}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
+  document.getElementById('feed').innerHTML=d.feed.map(f=>`<div class="row"><span class="sev s${f.severity}">${f.severity}</span><span class="nm">${f.name}</span><span class="ip">${f.ip}</span><span class="meta">${f.technique} &middot; conf ${f.confidence}</span></div>`).join('');
+}
+load();
+</script></body></html>
