@@ -1,9 +1,9 @@
 """
 Threat report generator.
 
-Combines BOTH detection layers into one human-readable report:
-  - Signature detections (known TTPs)   -> from detector.py
-  - Behavioral anomalies (unknown)      -> from anomaly.py
+Combines both detection layers into one report:
+  - Signature detections (known TTPs)  -> from detector.detect_signatures
+  - Behavioral anomalies (unknown)     -> from anomaly.detect_anomalies
 
 Technique metadata is pulled from the official ATT&CK STIX dataset
 (attack.get_technique) -- no hardcoded technique names.
@@ -20,7 +20,7 @@ from pathlib import Path
 
 from .anomaly import detect_anomalies
 from .attack import get_technique
-from .detector import detect_credential_stuffing
+from .detector import detect_signatures
 from .parse import parse_file
 
 OUTPUT = Path("reports/triage-report.md")
@@ -33,11 +33,7 @@ REASON_TEXT = {
 }
 
 
-def _sig_severity(d: dict) -> str:
-    return "P1" if d["total"] - d["failed"] > 0 else "P2"
-
-
-def render(sig: list[dict], anom: list[dict], source: str, n: int) -> str:
+def render(sigs: list[dict], anom: list[dict], source: str, n: int) -> str:
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     L = [
         "# Detection Triage Report",
@@ -45,26 +41,23 @@ def render(sig: list[dict], anom: list[dict], source: str, n: int) -> str:
         f"- Generated: {now}",
         f"- Source: `{source}`",
         f"- Events analysed: {n}",
-        f"- Signature detections: {len(sig)}  |  Behavioral anomalies: {len(anom)}",
+        f"- Signature detections: {len(sigs)}  |  Behavioral anomalies: {len(anom)}",
         "",
         "---",
         "",
         "## Signature detections (known TTPs)",
         "",
     ]
-    if not sig:
+    if not sigs:
         L.append("_None._")
-    for d in sig:
+    for d in sigs:
         info = get_technique(d["technique"])
-        ok = d["total"] - d["failed"]
         L += [
-            f"### [{_sig_severity(d)}] {info['name']} — {d['ip']}",
+            f"### [{d['severity']}] {info['name']} — {d['ip']}",
             f"- **ATT&CK:** [{d['technique']} {info['name']}]({info['url']}) (Tactic: {info['tactic']})",
-            f"- **Activity:** {d['failed']} failed / {d['total']} logins in 1 min, scripted: {d['scripted_ua']}",
-            f"- **Outcome:** {ok} success during burst"
-            + (" → account compromise suspected" if ok else ""),
+            f"- **Evidence:** {d['summary']}",
             f"- **Confidence:** {d['confidence']}",
-            f"- **Action:** reset/kill sessions for accounts hit from {d['ip']}; block the IP",
+            f"- **Action:** {d['action']}",
             "",
         ]
 
@@ -92,15 +85,14 @@ def main() -> None:
     source = "data/sample/access.log"
     events = parse_file(source)
 
-    sig = detect_credential_stuffing(events)
-    sig_ips = {d["ip"] for d in sig}
-    # anomalies already caught by a signature are dropped (avoid duplicate noise)
+    sigs = detect_signatures(events)
+    sig_ips = {d["ip"] for d in sigs}
     anom = [a for a in detect_anomalies(events) if a["ip"] not in sig_ips]
 
-    report = render(sig, anom, source, len(events))
+    report = render(sigs, anom, source, len(events))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(report, encoding="utf-8")
-    print(f"Wrote report: {len(sig)} signature + {len(anom)} anomaly detection(s)\n")
+    print(f"Wrote report: {len(sigs)} signature + {len(anom)} anomaly detection(s)\n")
     print(report)
 
 
