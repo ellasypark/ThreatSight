@@ -39,6 +39,14 @@ def generate() -> None:
 
 
 @app.command()
+def emulate() -> None:
+    """Purple-team: simulate attacks (incl. an evasive one) and show detection coverage."""
+    from . import emulate as emu
+
+    emu.main()
+
+
+@app.command()
 def analyze(
     log_path: Path = typer.Argument(..., help="Path to a web/WAF access log to analyze."),
     fmt: str = typer.Option("md", "--format", "-f", help="Output format: md or json."),
