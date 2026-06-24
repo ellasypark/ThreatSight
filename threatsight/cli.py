@@ -46,6 +46,43 @@ def emulate() -> None:
     emu.main()
 
 
+@app.command(name="llm-scan")
+def llm_scan(
+    log_path: Path = typer.Argument(Path("data/sample/llm_requests.jsonl"),
+                                    help="JSONL of LLM API requests."),
+) -> None:
+    """Scan LLM request logs for prompt-injection / jailbreak abuse (OWASP-LLM / ATLAS)."""
+    from .llm_abuse import detect_llm_abuse, generate_llm_logs, load_llm_logs
+
+    if not log_path.exists():
+        generate_llm_logs(log_path)
+        typer.echo(f"(generated sample {log_path})")
+    dets = detect_llm_abuse(load_llm_logs(log_path))
+    typer.echo(f"{len(dets)} LLM-abuse detection(s):")
+    for d in dets:
+        typer.echo(f"[{d['severity']}] {d['owasp']} ({d['atlas']}) — {d['ip']}/{d['user']}: {d['matched']}")
+
+
+@app.command()
+def investigate(
+    log_path: Path = typer.Argument(..., help="Path to a web/WAF access log to investigate."),
+    model: str = typer.Option("claude-sonnet-4-6", "--model", help="Anthropic model to use."),
+    max_steps: int = typer.Option(8, "--max-steps", help="Max agent tool-use steps."),
+) -> None:
+    """Agentic investigation: Claude drives tools in a loop to investigate (needs ANTHROPIC_API_KEY)."""
+    from .orchestrator import investigate as run_investigation
+
+    if not log_path.exists():
+        typer.secho(f"Log file not found: {log_path}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        typer.secho('Set ANTHROPIC_API_KEY first (and THREATSIGHT_INSECURE_SSL=1 if your network intercepts HTTPS).',
+                    fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    typer.echo(run_investigation(log_path, model=model, max_steps=max_steps))
+
+
 @app.command()
 def analyze(
     log_path: Path = typer.Argument(..., help="Path to a web/WAF access log to analyze."),
