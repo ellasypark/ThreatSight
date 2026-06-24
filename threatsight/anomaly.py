@@ -3,12 +3,17 @@ Behavioral anomaly detection (Layer 2: catches UNKNOWN attacks).
 
 Signature detectors only catch attacks we defined in advance. This layer needs
 no signature: it builds a per-source-IP behavioural profile, then flags IPs that
-are statistical outliers vs the rest of the traffic -- so it surfaces novel or
-recon activity (e.g. a scanner probing odd paths) that no rule was written for.
+are statistical outliers vs the rest of the traffic -- surfacing novel or recon
+activity (e.g. a scanner) that no rule was written for.
 
-Method: robust z-score (median + MAD) on each feature. An IP is anomalous if any
+Method: robust z-score (median + MAD) per feature. An IP is anomalous if any
 feature is >= Z_THRESHOLD robust std-devs from normal. We report WHICH features
 were extreme (explainable) and a *candidate* ATT&CK technique for analyst review.
+
+MIN_REQUESTS guard: IPs with very little activity are skipped -- there isn't
+enough behaviour to judge them, and flagging them causes false positives (this
+guard was added after adversary emulation showed a benign user with a few login
+typos getting flagged).
 
 Run from the project root:
     python -m threatsight.anomaly
@@ -19,9 +24,11 @@ from __future__ import annotations
 import numpy as np
 import polars as pl
 
+from .config import ANOMALY_MIN_REQUESTS, ANOMALY_Z_THRESHOLD
 from .parse import parse_file
 
-Z_THRESHOLD = 3.5  # robust std-devs from normal to count as anomalous
+Z_THRESHOLD = ANOMALY_Z_THRESHOLD    # tunable in config.py
+MIN_REQUESTS = ANOMALY_MIN_REQUESTS
 FEATURES = ["requests", "not_found_ratio", "distinct_paths", "error_ratio"]
 
 
@@ -79,6 +86,8 @@ def detect_anomalies(events) -> list[dict]:
 
     out = []
     for i, row in enumerate(feats.iter_rows(named=True)):
+        if row["requests"] < MIN_REQUESTS:  # too little activity to judge
+            continue
         reasons = [f for f in FEATURES if z[f][i] >= Z_THRESHOLD]
         if not reasons:
             continue

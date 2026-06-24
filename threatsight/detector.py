@@ -13,11 +13,12 @@ from __future__ import annotations
 
 import polars as pl
 
+from .config import CRED_STUFFING_MIN_FAILURES, CRED_STUFFING_WINDOW
 from .parse import parse_file
 
 # --- credential stuffing (T1110.004) -------------------------------------------------
-WINDOW = "1m"
-MIN_FAILURES = 20  # failed logins from one IP in one minute to flag
+WINDOW = CRED_STUFFING_WINDOW          # tunable in config.py
+MIN_FAILURES = CRED_STUFFING_MIN_FAILURES
 
 
 def detect_credential_stuffing(events) -> list[dict]:
