@@ -54,11 +54,21 @@ SYSTEM = (
 )
 
 
-def ai_analyze(log_lines: list[str], model: str = DEFAULT_MODEL) -> AIAnalysis:
-    """Send log lines to Claude and get back findings validated against AIAnalysis."""
+def _make_client():
+    """Anthropic client. Verification ON by default; only disabled if the user
+    explicitly sets THREATSIGHT_INSECURE_SSL=1 (e.g. on a network that intercepts
+    HTTPS). The default is safe to commit."""
     import anthropic
 
-    client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+    if os.getenv("THREATSIGHT_INSECURE_SSL") == "1":
+        import httpx
+        return anthropic.Anthropic(http_client=httpx.Client(verify=False))
+    return anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+
+
+def ai_analyze(log_lines: list[str], model: str = DEFAULT_MODEL) -> AIAnalysis:
+    """Send log lines to Claude and get back findings validated against AIAnalysis."""
+    client = _make_client()
     tool = {
         "name": "report_findings",
         "description": "Report the security findings extracted from the log lines.",
