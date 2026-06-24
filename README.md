@@ -1,75 +1,109 @@
 # ThreatSight
 
-A WAF / web-log **threat analyzer** with two-layer detection, mapped to MITRE ATT&CK.
-
-- **Layer 1 — Signature detection (known TTPs):** behaviour-based rules per attack technique (e.g. credential stuffing `T1110.004`).
-- **Layer 2 — Behavioral anomaly detection (unknown):** robust statistical outlier detection over per-source-IP behaviour — catches novel / recon activity (e.g. a scanner) that **no signature was written for**.
-- **ATT&CK enrichment:** technique names, tactics and links are pulled from the **official ATT&CK STIX dataset** (`mitreattack-python`) — not hardcoded.
-- **Output:** a triage report (`reports/triage-report.md`) split into *signature detections* and *behavioral anomalies*, each with severity, ATT&CK mapping, and recommended actions.
-
-> Built threat-first: model the attacks that apply, detect known ones precisely with signatures,
-> and catch the unknown ones with anomaly detection — detection-as-code, not dashboard-clicking.
-> (Runs on synthetic logs by design; swap in a public WAF dataset to analyse real traffic.)
+An **AI-agent–powered detection & response analyzer** for web / WAF logs. It finds attacks
+across three detection layers, lets an **LLM agent investigate them autonomously**, and maps
+everything to **MITRE ATT&CK**.
 
 ## Why this exists
 
-Operating a WAF at scale blocks attacks that someone else's rules defined. ThreatSight goes one
-layer deeper: it *finds* attack patterns in raw logs, *maps* them to ATT&CK, and *reports* them so
-a responder knows what happened and what to do — proving I understand the threat patterns behind
-the blocks, not just the product.
+A busy web service logs **millions of requests a day**, and real attacks — credential stuffing,
+SQL injection, scanning — hide among them. Two problems follow:
 
-## How it works
+- **No one can read millions of log lines**, especially at 3am. Attacks get missed, or analysts
+  drown in noise and alert fatigue.
+- **Each traditional method falls short alone:** signature rules only catch attacks you already
+  defined (they miss novel ones); pure anomaly detection is noisy; and even when an alert *does*
+  fire, a human still has to investigate it and write it up — slow, and inconsistent between
+  analysts and shifts.
 
+ThreatSight tackles all of this at once: **layered detection** (known *and* unknown attacks), an
+**agent that does the investigation for you**, and a **tested** pipeline so the alerts are
+trustworthy.
+
+## What it does
+
+| Layer | Catches | How |
+|---|---|---|
+| **1. Signature** | known attacks | behaviour rules per ATT&CK technique (credential stuffing `T1110.004`, SQLi `T1190`) |
+| **2. Anomaly** | unknown / novel attacks | robust statistical outlier detection per source IP (no signature needed) |
+| **3. LLM** | obfuscated / context-dependent | Claude structured extraction (schema-validated) |
+| **Agent** | the investigation itself | a Claude **tool-use loop** that pivots, enriches, maps to ATT&CK, and writes the assessment |
+
+## What you get (the effect)
+
+- **Fewer blind spots** — signatures catch the known, anomaly detection catches the *unknown*. A
+  scanner with no written rule still gets flagged because it behaves unlike everyone else.
+- **Investigation, not just alerts** — the agent turns *"an alert fired"* into *"here's who, what,
+  how severe, and what to do"* — in seconds, the same way every time, 24/7. No analyst writing it
+  up by hand at 3am.
+- **Trustworthy alerts (low false positives)** — every detector is tested against labelled
+  good/bad data, and CI gates precision/recall, so the tool doesn't cry wolf.
+- **A shared language** — every finding is mapped to MITRE ATT&CK, with a coverage view of what
+  you can and can't detect.
+- **Portable & light** — runs on any web/WAF log, via CLI or a web dashboard, with no
+  Elasticsearch / Kibana / Docker to operate.
+
+## Install & use
+
+```bash
+pip install .                              # installs deps + the `threatsight` command
+
+threatsight generate                       # make synthetic sample logs
+threatsight analyze     data/sample/access.log          # rules: signature + anomaly (fast, free)
+threatsight analyze     data/sample/access.log --format json
+threatsight ai-analyze  data/sample/access.log          # LLM analysis (Claude)      [ANTHROPIC_API_KEY]
+threatsight investigate data/sample/access.log          # agentic investigation loop [ANTHROPIC_API_KEY]
+threatsight emulate                        # purple-team coverage matrix
+uvicorn threatsight.server:app --reload    # web dashboard at http://127.0.0.1:8000
 ```
-web/WAF logs
-  -> parse        normalise to a validated schema (LogEvent)
-  -> detector     Layer 1: signature detection of known TTPs
-  -> anomaly      Layer 2: behavioural outlier detection (unknown/novel)
-  -> attack       enrich each finding from the official ATT&CK STIX dataset
-  -> report       triage report: signature detections + behavioral anomalies
-```
 
-**Anomaly method:** for each source IP we build a behavioural profile (request volume, 404 rate,
-distinct paths probed, error rate) and flag IPs that are robust-z-score (median/MAD) outliers vs
-the rest of the traffic. Findings include *why* they fired and a *candidate* ATT&CK technique for
-analyst review.
+## The agent (why it's the core)
 
-## Threat model (what we detect, and why)
+`orchestrator.py` is a Claude **tool-use loop** — the model decides which tools to call, observes
+the results, and iterates to a final incident assessment. This is what makes ThreatSight
+*investigate* rather than just *alert*.
 
-| Attack | ATT&CK | Layer | Log signal |
-|---|---|---|---|
-| Credential stuffing | `T1110.004` | signature | one IP, burst of 401s in 60s, scripted client |
-| Scanning / recon | `T1595.002` | anomaly | many distinct paths, high 404 rate, outlier volume |
-| SQL injection / XSS | `T1190` | signature *(planned)* | `' OR 1=1`, `<script>` in request params |
-| L7 DoS | `T1499` / `T1498` | anomaly | abnormal request-rate spike from one source |
+- **Tools:** `run_signature_detectors`, `run_anomaly_detection`, `get_events_for_ip` (forensic
+  pivot), `lookup_attack_technique`, `check_ip_reputation`
+- **Context management:** tools return small summaries, never the raw log lines — so the model
+  reasons over a tiny, relevant context instead of 100K events
+- **Guardrails:** per-step tracing, tool errors fed back to the model, a `max_steps` cost bound
 
 ## Repo layout
 
 ```
 threatsight/
-  generate.py    # synthetic logs: normal + credential stuffing + scanner
-  parse.py       # log line -> validated LogEvent
-  detector.py    # Layer 1: signature detection (known TTPs)
-  anomaly.py     # Layer 2: behavioural anomaly detection (unknown)
-  attack.py      # ATT&CK STIX enrichment (mitreattack-python)
-  report.py      # combined triage report
-data/sample/     # small synthetic logs
-data/attack/     # cached ATT&CK STIX dataset (gitignored, ~40 MB)
-reports/         # generated triage report
+  generate.py     # synthetic logs (normal + credential stuffing + scanner + SQLi)
+  parse.py        # log line -> validated LogEvent (Pydantic)
+  detector.py     # LAYER 1 — signature detection
+  anomaly.py      # LAYER 2 — behavioral anomaly detection
+  ai_analyze.py   # LAYER 3 — LLM structured extraction (Claude)
+  orchestrator.py # AGENT — Claude tool-use investigation loop
+  attack.py       # MITRE ATT&CK enrichment from the official STIX dataset
+  report.py       # triage report (markdown / JSON)
+  server.py       # FastAPI server — web dashboard + /api/analyze
+  frontend/       # web dashboard (Chart.js)
+  emulate.py      # purple-team: emulate attacks + coverage matrix
+  cli.py          # the `threatsight` CLI
+tests/            # pytest: detections catch attacks, raise no false positives
+.github/workflows/ci.yml
 ```
 
-## Install & use
+## Threat model
 
-```bash
-# install (pulls dependencies and gives you the `threatsight` command)
-pip install .
+| Attack | ATT&CK | Layer |
+|---|---|---|
+| Credential stuffing | `T1110.004` | signature |
+| SQL injection | `T1190` | signature |
+| Scanning / recon | `T1595.002` | anomaly |
+| Obfuscated / novel | model-assessed | LLM + agent |
 
-# generate sample logs, then analyze any web/WAF access log
-threatsight generate
-threatsight analyze data/sample/access.log                 # markdown threat report
-threatsight analyze data/sample/access.log --format json   # machine-readable
-threatsight analyze /var/log/nginx/access.log -o report.md # analyze your own log -> file
-```
+## Tech
 
-> First analysis downloads the official ATT&CK STIX dataset (~40 MB) into `data/attack/` and
-> caches it. (No install? Run the same commands as `python -m threatsight.cli analyze ...`.)
+Python · Pydantic · Polars · numpy · mitreattack-python (ATT&CK STIX) · Anthropic Claude
+(tool-use) · FastAPI · Chart.js · Typer · pytest · GitHub Actions
+
+## Status
+
+Portfolio project. Roadmap: LLM/agent-abuse detection (prompt injection, jailbreak) mapped to
+OWASP-LLM / MITRE ATLAS; persistent event store + forensic query API.
