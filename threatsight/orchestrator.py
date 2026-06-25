@@ -65,12 +65,17 @@ def _tools_for(events):
     def check_ip_reputation(ip):
         return {"ip": ip, "malicious": ip.startswith(("45.", "185.", "91.")), "source": "stub"}
 
+    def search_attack_knowledge(query):
+        from .rag import retrieve  # RAG over the ATT&CK knowledge base
+        return retrieve(query)
+
     return {
         "run_signature_detectors": run_signature_detectors,
         "run_anomaly_detection": run_anomaly_detection,
         "get_events_for_ip": get_events_for_ip,
         "lookup_attack_technique": lookup_attack_technique,
         "check_ip_reputation": check_ip_reputation,
+        "search_attack_knowledge": search_attack_knowledge,
     }
 
 
@@ -85,6 +90,9 @@ TOOL_SCHEMAS = [
      "input_schema": {"type": "object", "properties": {"technique_id": {"type": "string"}}, "required": ["technique_id"]}},
     {"name": "check_ip_reputation", "description": "Is an IP known-malicious?",
      "input_schema": {"type": "object", "properties": {"ip": {"type": "string"}}, "required": ["ip"]}},
+    {"name": "search_attack_knowledge",
+     "description": "RAG: retrieve relevant MITRE ATT&CK technique knowledge for a free-text query.",
+     "input_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}},
 ]
 
 
@@ -129,8 +137,9 @@ def investigation_agent(client, model, events, focus_ips, max_steps=MAX_STEPS) -
                  "Use the tools to pivot, then summarise what each did and how severe."}]
     for _ in range(max_steps):
         resp = client.messages.create(model=model, max_tokens=1200,
-            system="You are a SOC investigation agent. Pivot on events, check reputation, map to "
-                   "ATT&CK, then summarise. Do not ask the user questions.",
+            system="You are a SOC investigation agent. Pivot on events, check reputation, and use "
+                   "search_attack_knowledge to retrieve relevant ATT&CK context (RAG), then "
+                   "summarise what each source did and how severe. Do not ask the user questions.",
             tools=TOOL_SCHEMAS, messages=messages)
         messages.append({"role": "assistant", "content": resp.content})
         tool_uses = [b for b in resp.content if getattr(b, "type", None) == "tool_use"]
