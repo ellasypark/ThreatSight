@@ -46,6 +46,29 @@ def emulate() -> None:
     emu.main()
 
 
+@app.command(name="threat-model")
+def threat_model_cmd(
+    system: str = typer.Option("a public web application behind a WAF", "--system",
+                               help="System to threat-model."),
+) -> None:
+    """AI-assisted threat modeling: the LLM proposes the ATT&CK/ATLAS techniques the system is
+    exposed to, marks coverage/gaps, and caches the profile (needs ANTHROPIC_API_KEY)."""
+    from .threat_model import coverage, generate_threat_model, save_threat_model, summary
+
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        typer.secho("Set ANTHROPIC_API_KEY first.", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    rows = generate_threat_model(system)
+    save_threat_model(rows)
+    cov = coverage(threat_rows=rows)
+    s = summary(cov)
+    typer.echo(f"Threat profile for: {system}")
+    typer.echo(f"{s['covered']}/{s['total']} covered · {s['gaps']} gap(s)\n")
+    for r in cov:
+        typer.echo(f"[{r['status']:7}] {r['framework']:6} {r['technique']:12} {r['name']} ({r['tactic']})")
+    typer.echo("\nSaved to data/threat_model.json — the dashboard will use it.")
+
+
 @app.command(name="llm-scan")
 def llm_scan(
     log_path: Path = typer.Argument(Path("data/sample/llm_requests.jsonl"),
@@ -69,7 +92,7 @@ def investigate(
     model: str = typer.Option("claude-sonnet-4-6", "--model", help="Anthropic model to use."),
     max_steps: int = typer.Option(8, "--max-steps", help="Max agent tool-use steps."),
 ) -> None:
-    """Agentic investigation: Claude drives tools in a loop to investigate (needs ANTHROPIC_API_KEY)."""
+    """Multi-agent investigation: triage -> investigation -> justification (needs ANTHROPIC_API_KEY)."""
     from .orchestrator import investigate as run_investigation
 
     if not log_path.exists():
@@ -80,7 +103,14 @@ def investigate(
                     fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
-    typer.echo(run_investigation(log_path, model=model, max_steps=max_steps))
+    res = run_investigation(log_path, model=model, max_steps=max_steps)
+    typer.secho("== Triage ==", fg=typer.colors.CYAN)
+    for i in res["triage"]:
+        typer.echo(f"  [P{i['priority']}] {i['ip']} — {i['disposition']}: {i['reason']}")
+    typer.secho("\n== Investigation ==", fg=typer.colors.CYAN)
+    typer.echo(res["investigation"])
+    typer.secho("\n== Assessment ==", fg=typer.colors.CYAN)
+    typer.echo(res["assessment"])
 
 
 @app.command()
