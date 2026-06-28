@@ -118,28 +118,43 @@ threatsight llm-scan                                    # prompt-injection / jai
 ---
 
 ## Repo layout
-
 ```
 threatsight/
-  generate.py     # synthetic logs (normal + credential stuffing + scanner + SQLi)
-  parse.py        # log line -> validated LogEvent (Pydantic)
-  detector.py     # LAYER 1 — signature detection
-  anomaly.py      # LAYER 2 — behavioral anomaly detection
-  ai_analyze.py   # LAYER 3 — LLM structured extraction (Claude)
-  orchestrator.py # AGENT — multi-agent tool-use investigation loop
-  rag.py          # RAG over the ATT&CK knowledge base (embeddings + TF-IDF fallback)
-  attack.py       # MITRE ATT&CK enrichment from the official STIX dataset
-  owasp.py        # OWASP Top 10 / OWASP-LLM mapping
-  threat_model.py # LLM-proposed threat profile + coverage/gap
-  metrics.py      # precision / recall / FP on a labelled set
-  report.py       # triage report (markdown / JSON)
-  server.py       # FastAPI server — web dashboard + /api/analyze
-  frontend/       # web dashboard (Chart.js)
-  emulate.py      # purple-team: emulate attacks + coverage matrix
-  llm_abuse.py    # LLM-request abuse detection (OWASP-LLM / ATLAS)
-  cli.py          # the `threatsight` CLI
-tests/            # pytest: detections catch attacks, raise no false positives
+  # ── ingest ──────────────────────────────
+  parse.py          # log line → validated LogEvent (Pydantic)
+  generate.py       # synthetic logs (normal + attacks)
+  config.py         # thresholds & tunables
+
+  # ── detection · 3 layers ────────────────
+  detector.py       # LAYER 1 · signature rules
+  anomaly.py        # LAYER 2 · behavioral anomaly (robust z-score / MAD)
+  ai_analyze.py     # LAYER 3 · LLM structured extraction (Claude)
+
+  # ── agentic investigation ───────────────
+  orchestrator.py   # multi-agent loop: triage → investigate → justify
+  rag.py            # RAG over the ATT&CK KB (embeddings + TF-IDF fallback)
+
+  # ── enrichment & framework mapping ──────
+  attack.py         # MITRE ATT&CK (official STIX dataset)
+  owasp.py          # OWASP Top 10 / OWASP-LLM
+  threat_model.py   # LLM-proposed threat profile + coverage/gaps
+  llm_abuse.py      # LLM-request abuse (OWASP-LLM / ATLAS)
+
+  # ── output ──────────────────────────────
+  report.py         # triage report (markdown / JSON)
+  server.py         # FastAPI dashboard + /api/analyze
+  frontend/         # web dashboard (Chart.js)
+
+  # ── evaluation ──────────────────────────
+  metrics.py        # precision / recall / FP on a labelled set
+  emulate.py        # purple-team: emulate attacks + coverage matrix
+
+  cli.py            # the `threatsight` CLI
+
+tests/              # pytest — fires on attacks, silent on benign
 .github/workflows/ci.yml
+pyproject.toml
+README.md
 ```
 
 ## Tech
