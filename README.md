@@ -8,8 +8,8 @@
 
 
 <p align="center">
-  <img src="docs/dashboard.jpg" width="100%" alt="ThreatSight dashboard top">
-  <img src="docs/dashboard1.jpg" width="100%" alt="ThreatSight dashboard bottom">
+  <img src="docs/dashboard.jpg"  alt="ThreatSight dashboard top">
+  <img src="docs/dashboard1.jpg" alt="ThreatSight dashboard bottom">
 </p>
 ---
 
