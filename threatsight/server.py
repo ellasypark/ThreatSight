@@ -20,6 +20,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from .anomaly import detect_anomalies
 from .attack import get_technique
 from .detector import detect_signatures
+from .metrics import compute as compute_metrics
 from .owasp import owasp_for
 from .parse import parse_file
 from .threat_model import coverage as threat_coverage
@@ -66,6 +67,7 @@ def build_stats(log_path) -> dict:
         "by_layer": dict(Counter(d["layer"] for d in dets)),
         "threat_model": tm,
         "threat_summary": threat_summary(tm),
+        "metrics": compute_metrics(),
         "timeline": dict(sorted(Counter(e.timestamp.strftime("%H:00") for e in events).items())),
         "feed": dets,
     }
