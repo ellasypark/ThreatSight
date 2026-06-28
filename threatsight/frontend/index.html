@@ -1,64 +1,113 @@
-<!doctype html><html><head><meta charset="utf-8"><title>ThreatSight</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ThreatSight</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-body{font-family:system-ui,sans-serif;max-width:1000px;margin:24px auto;padding:0 16px;color:#1b1b1a;background:#faf9f5}
-h1{font-size:22px;font-weight:600;margin-bottom:2px}.sub{color:#6b6a64;margin-bottom:16px}
-.bar{display:flex;gap:8px;margin-bottom:20px}.bar input{flex:1;padding:8px 10px;border:1px solid #d9d7cf;border-radius:8px}
-.bar button{padding:8px 16px;border:1px solid #534AB7;background:#534AB7;color:#fff;border-radius:8px;cursor:pointer}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
-.card{background:#fff;border:1px solid #e7e5dd;border-radius:12px;padding:16px}
-.lbl{font-size:13px;color:#6b6a64}.num{font-size:26px;font-weight:600;margin-top:4px}
-.panel{background:#fff;border:1px solid #e7e5dd;border-radius:12px;padding:16px;margin-bottom:24px}
-.panel h2{font-size:14px;font-weight:600;margin:0 0 12px;color:#444}
-.panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.det{border:1px solid #e7e5dd;border-radius:10px;padding:12px 14px;margin-bottom:10px}
-.head{display:flex;align-items:center;gap:10px}
-.sev{font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px}
-.sP1{background:#FCEBEB;color:#791F1F}.sP2{background:#FAEEDA;color:#633806}.sP3{background:#E6F1FB;color:#0C447C}
-.nm{font-weight:600}.ip{font-family:monospace;color:#6b6a64;font-size:13px}.meta{margin-left:auto;font-size:12px;color:#6b6a64}
-.detail{margin-top:8px;font-size:13px;color:#444;line-height:1.5}
-.detail b{color:#1b1b1a;font-weight:600}
-.tag{display:inline-block;background:#F1EFE8;color:#444441;font-size:11px;padding:1px 7px;border-radius:5px;margin:2px 4px 0 0}
-canvas{max-height:220px}
+:root{
+  --bg:#0b1020; --panel:#141c2f; --panel2:#0f1626; --border:#243049;
+  --text:#e6e9f2; --muted:#8b95a7; --faint:#5b6577;
+  --indigo:#6366f1; --teal:#10b981; --red:#ef4444; --amber:#f59e0b; --blue:#3b82f6;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);
+  background-image:radial-gradient(1200px 600px at 80% -10%,rgba(99,102,241,.10),transparent 60%);}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px 48px}
+header{display:flex;align-items:center;gap:14px;padding:22px 0 18px;flex-wrap:wrap}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#6366f1,#10b981);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+.brand h1{font-size:19px;margin:0;font-weight:650;letter-spacing:.2px}
+.brand p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.bar{margin-left:auto;display:flex;gap:8px;align-items:center}
+.bar input{background:var(--panel2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:9px;width:300px;font-size:13px}
+.bar button{background:var(--indigo);border:0;color:#fff;padding:9px 18px;border-radius:9px;font-weight:600;cursor:pointer;font-size:13px}
+.bar button:hover{background:#4f46e5}
+.status{font-size:12.5px;color:var(--muted);margin:0 0 18px;min-height:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:16px 18px}
+.kpi .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:28px;font-weight:700;margin-top:6px}
+.kpi.crit .v{color:var(--red)}
+.row{display:grid;gap:18px;margin-bottom:18px}
+.row.two{grid-template-columns:1fr 1fr}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px}
+.panel h2{font-size:12.5px;font-weight:650;margin:0 0 14px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+canvas{max-height:230px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:600;padding:6px 0;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px}
+td{padding:8px 0;border-top:1px solid var(--border)}
+td.mono{font-variant-numeric:tabular-nums}
+.tmrow{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--border)}
+.tmrow:first-child{border-top:0}
+.pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.3px}
+.pill.cov{background:rgba(16,185,129,.15);color:#34d399}
+.pill.gap{background:rgba(107,114,128,.2);color:#9ca3af}
+.tmname{font-weight:600}.tmid{font-family:ui-monospace,monospace;color:var(--muted);font-size:12px}
+.tmmeta{margin-left:auto;font-size:12px;color:var(--faint)}
+.seen{color:var(--teal);font-weight:600}
+.det{border:1px solid var(--border);border-left:3px solid var(--faint);border-radius:11px;padding:13px 15px;margin-bottom:11px;background:var(--panel2)}
+.det.P1{border-left-color:var(--red)}.det.P2{border-left-color:var(--amber)}.det.P3{border-left-color:var(--blue)}
+.dhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sev{font-size:11px;font-weight:700;padding:2px 9px;border-radius:6px}
+.sev.P1{background:rgba(239,68,68,.16);color:#f87171}.sev.P2{background:rgba(245,158,11,.16);color:#fbbf24}.sev.P3{background:rgba(59,130,246,.16);color:#60a5fa}
+.dnm{font-weight:650}.dip{font-family:ui-monospace,monospace;color:var(--muted);font-size:12.5px}
+.dmeta{margin-left:auto;font-size:11.5px;color:var(--faint)}
+.detail{margin-top:9px;font-size:12.5px;color:#b9c1d1;line-height:1.55}.detail b{color:var(--text)}
+.tag{display:inline-block;background:rgba(99,102,241,.12);color:#a5b4fc;font-size:11px;padding:2px 8px;border-radius:6px;margin:3px 5px 0 0}
+.muted{color:var(--muted);font-size:12px;margin-top:8px}
+@media(max-width:760px){.row.two{grid-template-columns:1fr}.bar input{width:170px}}
 </style></head><body>
-<h1>ThreatSight</h1>
-<div class="sub">AI-agent–powered detection &amp; response · web/WAF logs · MITRE ATT&CK</div>
-<div class="bar"><input id="log" value="data/sample/access.log"><button onclick="load()">Analyze</button></div>
-<div class="grid" id="cards"></div>
-<div class="panel"><h2>Activity timeline (events per hour)</h2><canvas id="tl"></canvas></div>
-<div class="panels">
-  <div class="panel" style="margin:0"><h2>Severity</h2><canvas id="sev"></canvas></div>
-  <div class="panel" style="margin:0"><h2>Detection layer</h2><canvas id="lay"></canvas></div>
+<div class="wrap">
+<header>
+  <div class="logo">T</div>
+  <div class="brand"><h1>ThreatSight</h1><p>AI-agent–powered detection &amp; response · web/WAF logs · MITRE ATT&CK</p></div>
+  <div class="bar"><input id="log" value="data/sample/access.log"><button onclick="load()">Analyze</button></div>
+</header>
+<div class="status" id="status"></div>
+<div class="kpis" id="kpis"></div>
+<div class="row"><div class="panel"><h2>Activity timeline · events per hour</h2><canvas id="tl"></canvas></div></div>
+<div class="row two">
+  <div class="panel"><h2>Severity</h2><canvas id="sev"></canvas></div>
+  <div class="panel"><h2>Detection layer</h2><canvas id="lay"></canvas></div>
 </div>
-<div class="panel"><h2>ATT&CK coverage (tactic &#8594; technique)</h2><div id="coverage"></div></div>
-<div class="panel"><h2>Detections (ATT&CK detail)</h2><div id="feed"></div></div>
+<div class="row two">
+  <div class="panel"><h2>Detection metrics · labelled set</h2><div id="metrics"></div></div>
+  <div class="panel"><h2>Threat model · coverage &amp; gaps</h2><div id="tmsum" class="muted" style="margin:0 0 8px"></div><div id="tm"></div></div>
+</div>
+<div class="row"><div class="panel"><h2>Detections · ATT&CK / OWASP detail</h2><div id="feed"></div></div></div>
+</div>
 <script>
-const SEV={P1:'#E24B4A',P2:'#EF9F27',P3:'#378ADD',INFO:'#888780'};
+const SEV={P1:'#ef4444',P2:'#f59e0b',P3:'#3b82f6',INFO:'#6b7280'};
 let ch={};
-function donut(id,o,c){if(ch[id])ch[id].destroy();ch[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:Object.keys(o),datasets:[{data:Object.values(o),backgroundColor:c,borderWidth:0}]},options:{cutout:'60%'}});}
-function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+Chart.defaults.color='#8b95a7';Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
+function esc(s){return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function donut(id,o,c){if(ch[id])ch[id].destroy();ch[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:Object.keys(o||{}),datasets:[{data:Object.values(o||{}),backgroundColor:c,borderWidth:0}]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:14}}},cutout:'62%'}});}
+const gridc={color:'#243049'};
 async function load(){
-  const log=document.getElementById('log').value;
-  const d=await (await fetch('/api/analyze?log='+encodeURIComponent(log))).json();
-  if(d.error){document.getElementById('cards').innerHTML='<div class="card">'+d.error+'</div>';return;}
-  document.getElementById('cards').innerHTML=[['Events analysed',d.events],['Detections',d.detections],['Critical (P1)',d.p1],['Attacker IPs',d.attacker_ips],['ATT&CK techniques',d.techniques]].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="num">${v}</div></div>`).join('');
+  const st=document.getElementById('status');st.textContent='Analyzing…';
+  let d;
+  try{
+    const r=await fetch('/api/analyze?log='+encodeURIComponent(document.getElementById('log').value));
+    if(!r.ok){st.textContent='API error '+r.status+'. Did you run `threatsight generate`?';return;}
+    d=await r.json();
+  }catch(e){st.textContent='Could not reach the API. Run `uvicorn threatsight.server:app --reload` and open http://127.0.0.1:8000 (not the file). ('+e+')';return;}
+  if(d.error){st.textContent=d.error;return;}
+  st.textContent='Analysed '+d.events+' events.';
+  document.getElementById('kpis').innerHTML=[
+    ['Events analysed',d.events,''],['Detections',d.detections,''],['Critical (P1)',d.p1,'crit'],
+    ['Attacker IPs',d.attacker_ips,''],['ATT&CK techniques',d.techniques,'']
+  ].map(([l,v,c])=>`<div class="kpi ${c}"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('');
   if(ch.tl)ch.tl.destroy();
-  ch.tl=new Chart(document.getElementById('tl'),{type:'line',data:{labels:Object.keys(d.timeline),datasets:[{data:Object.values(d.timeline),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,.15)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-  donut('sev',d.severity,Object.keys(d.severity).map(s=>SEV[s]||'#888'));
-  donut('lay',d.by_layer,['#534AB7','#1D9E75']);
-  document.getElementById('coverage').innerHTML=(d.coverage||[]).map(t=>`<div style="margin-bottom:10px"><div style="font-weight:600;font-size:13px;color:#26215C;margin-bottom:4px">${esc(t.tactic)}</div>${t.techniques.map(x=>`<span class="tag" style="background:#EEEDFE;color:#26215C">${esc(x.technique)} ${esc(x.name)} ×${x.count}</span>`).join('')}</div>`).join('');
-  document.getElementById('feed').innerHTML=d.feed.map(f=>{
+  ch.tl=new Chart(document.getElementById('tl'),{type:'line',data:{labels:Object.keys(d.timeline||{}),datasets:[{data:Object.values(d.timeline||{}),borderColor:'#6366f1',backgroundColor:'rgba(99,102,241,.18)',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:'#6366f1'}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:gridc},x:{grid:gridc}}}});
+  donut('sev',d.severity,Object.keys(d.severity||{}).map(s=>SEV[s]||'#888'));
+  donut('lay',d.by_layer,['#6366f1','#10b981']);
+  const m=d.metrics||{};
+  document.getElementById('metrics').innerHTML=m.overall?`<table><tr><th>Detector</th><th>Precision</th><th>Recall</th><th>FP rate</th></tr>${['signature','anomaly','overall'].map(k=>`<tr><td style="text-transform:capitalize">${k}</td><td class="mono">${m[k].precision}</td><td class="mono">${m[k].recall}</td><td class="mono">${m[k].fp_rate}</td></tr>`).join('')}</table><div class="muted">Synthetic labelled set · ${m.n_ips} source IPs · numbers on noisy real data would be lower.</div>`:'';
+  const s=d.threat_summary||{};
+  document.getElementById('tmsum').innerHTML=`<b style="color:var(--teal)">${s.covered||0}/${s.total||0}</b> covered · <b style="color:#f87171">${s.gaps||0} gap(s)</b> · ${s.observed||0} seen in this log`;
+  document.getElementById('tm').innerHTML=(d.threat_model||[]).map(r=>`<div class="tmrow"><span class="pill ${r.covered?'cov':'gap'}">${r.covered?'covered':'gap'}</span><span class="tmname">${esc(r.name)}</span><span class="tmid">${esc(r.technique)}</span><span class="tmmeta">${esc(r.framework)} · ${esc(r.tactic)}${r.observed?' · <span class="seen">● seen</span>':''}</span></div>`).join('');
+  document.getElementById('feed').innerHTML=(d.feed||[]).map(f=>{
     const ds=(f.data_sources||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
     const mit=(f.mitigations||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
-    return `<div class="det">
-      <div class="head"><span class="sev s${f.severity}">${f.severity}</span>
-        <span class="nm">${esc(f.name)}</span><span class="ip">${esc(f.ip)}</span>
-        <span class="meta">${esc(f.technique)} · ${esc(f.tactic)} · conf ${f.confidence}</span></div>
-      <div class="detail">
-        ${f.description?`${esc(f.description)}<br>`:''}
-        ${ds?`<b>Detected via:</b> ${ds}<br>`:''}
-        ${mit?`<b>Mitigations:</b> ${mit}`:''}
-      </div></div>`;
+    return `<div class="det ${f.severity}"><div class="dhead"><span class="sev ${f.severity}">${f.severity}</span><span class="dnm">${esc(f.name)}</span><span class="dip">${esc(f.ip)}</span><span class="dmeta">${esc(f.technique)} · ${esc(f.tactic)}${f.owasp?' · '+esc(f.owasp):''} · conf ${f.confidence}</span></div><div class="detail">${f.description?esc(f.description)+'<br>':''}${ds?'<b>Detected via:</b> '+ds+'<br>':''}${mit?'<b>Mitigations:</b> '+mit:''}</div></div>`;
   }).join('');
 }
 load();
