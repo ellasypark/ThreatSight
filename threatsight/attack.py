@@ -1,15 +1,12 @@
 """
 MITRE ATT&CK enrichment from the official STIX dataset.
 
-Instead of hardcoding technique names/tactics, we look them up in the official
-ATT&CK Enterprise STIX bundle (downloaded once and cached locally), queried with
-the mitreattack-python library.
+Looks up a technique by ATT&CK id and returns the fields a SOC analyst actually
+needs: name, tactic, description, the data sources that detect it, and the
+mitigations that defend against it -- all pulled from the official ATT&CK STIX
+dataset (mitreattack-python), not hardcoded.
 
-Add a new detection later? Just reference its technique ID (e.g. "T1190") -- the
-name, tactic, link and description are pulled from MITRE automatically.
-
-If the dataset or library isn't available, get_technique() degrades gracefully
-(returns the ID + a constructed attack.mitre.org URL) so the tool never crashes.
+If the dataset/library is unavailable, get_technique() degrades gracefully.
 """
 
 from __future__ import annotations
@@ -18,7 +15,6 @@ import urllib.request
 from functools import lru_cache
 from pathlib import Path
 
-# Where we cache the official ATT&CK STIX bundle (gitignored - it's ~40 MB).
 STIX_PATH = Path("data/attack/enterprise-attack.json")
 STIX_URL = (
     "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/"
@@ -27,7 +23,6 @@ STIX_URL = (
 
 
 def _ensure_dataset() -> None:
-    """Download the ATT&CK STIX bundle once (~40 MB) and cache it locally."""
     if STIX_PATH.exists():
         return
     STIX_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -37,7 +32,6 @@ def _ensure_dataset() -> None:
 
 @lru_cache(maxsize=1)
 def _attack_data():
-    """Load the ATT&CK dataset once (cached for the whole run)."""
     from mitreattack.stix20 import MitreAttackData
 
     _ensure_dataset()
@@ -46,33 +40,60 @@ def _attack_data():
 
 @lru_cache(maxsize=256)
 def get_technique(attack_id: str) -> dict:
-    """Look up an ATT&CK technique by ID -> name, tactic(s), url, description."""
+    """Look up a technique -> name, tactic(s), url, description, data_sources, mitigations."""
     fallback = {
         "id": attack_id,
         "name": attack_id,
         "tactic": "",
         "url": f"https://attack.mitre.org/techniques/{attack_id.replace('.', '/')}/",
         "description": "",
+        "data_sources": [],
+        "mitigations": [],
     }
     try:
         obj = _attack_data().get_object_by_attack_id(attack_id, "attack-pattern")
     except Exception:
-        return fallback  # library/dataset unavailable -> graceful fallback
+        return fallback
     if obj is None:
         return fallback
 
     tactics = ", ".join(
-        phase.phase_name.replace("-", " ").title()
-        for phase in obj.get("kill_chain_phases", [])
+        p.phase_name.replace("-", " ").title() for p in obj.get("kill_chain_phases", [])
     )
     url = next(
-        (ref.url for ref in obj.external_references if ref.source_name == "mitre-attack"),
+        (r.url for r in obj.external_references if r.source_name == "mitre-attack"),
         fallback["url"],
     )
+    description = (obj.get("description", "") or "").split("\n")[0][:240]
+    data_sources = list(obj.get("x_mitre_data_sources", []) or [])
+
+    mitigations: list[str] = []
+    try:  # related-object lookup; needs the full STIX dataset
+        for rel in _attack_data().get_mitigations_mitigating_technique(obj.id):
+            m = rel.get("object")
+            if m is not None and getattr(m, "name", None):
+                mitigations.append(m.name)
+    except Exception:
+        pass
+
     return {
         "id": attack_id,
         "name": obj.name,
         "tactic": tactics,
         "url": url,
-        "description": obj.get("description", ""),
+        "description": description,
+        "data_sources": data_sources,
+        "mitigations": mitigations[:5],
     }
+
+
+def attack_coverage(detections: list[dict]) -> list[dict]:
+    """Threat-model view: group detections onto the ATT&CK matrix (tactic -> techniques)."""
+    by_tactic: dict[str, dict[str, dict]] = {}
+    for d in detections:
+        tactic = d.get("tactic") or "Unmapped"
+        tech = d.get("technique", "?")
+        bucket = by_tactic.setdefault(tactic, {})
+        entry = bucket.setdefault(tech, {"technique": tech, "name": d.get("name", tech), "count": 0})
+        entry["count"] += 1
+    return [{"tactic": t, "techniques": list(v.values())} for t, v in by_tactic.items()]

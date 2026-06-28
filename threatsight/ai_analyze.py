@@ -35,6 +35,10 @@ class AIFinding(BaseModel):
     attack_technique_id: str | None = Field(
         None, description="MITRE ATT&CK technique id if known, e.g. T1190"
     )
+    owasp: str | None = Field(
+        None, description="OWASP Top 10 (web) or OWASP LLM Top 10 category if applicable, "
+                          "e.g. 'A03:2021 Injection' or 'OWASP LLM01: Prompt Injection'"
+    )
     severity: str = Field(description="one of: P1, P2, P3, INFO")
     confidence: float = Field(description="0.0 - 1.0")
     explanation: str = Field(description="one sentence: why this is / isn't an attack")

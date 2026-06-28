@@ -11,14 +11,18 @@ h1{font-size:22px;font-weight:600;margin-bottom:2px}.sub{color:#6b6a64;margin-bo
 .panel{background:#fff;border:1px solid #e7e5dd;border-radius:12px;padding:16px;margin-bottom:24px}
 .panel h2{font-size:14px;font-weight:600;margin:0 0 12px;color:#444}
 .panels{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #e7e5dd;border-radius:8px;margin-bottom:8px}
+.det{border:1px solid #e7e5dd;border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.head{display:flex;align-items:center;gap:10px}
 .sev{font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px}
-.sP1{background:#FCEBEB;color:#791F1F}.sP2{background:#FAEEDA;color:#633806}.sP3{background:#E6F1FB;color:#0C447C}.sINFO{background:#F1EFE8;color:#444441}
+.sP1{background:#FCEBEB;color:#791F1F}.sP2{background:#FAEEDA;color:#633806}.sP3{background:#E6F1FB;color:#0C447C}
 .nm{font-weight:600}.ip{font-family:monospace;color:#6b6a64;font-size:13px}.meta{margin-left:auto;font-size:12px;color:#6b6a64}
+.detail{margin-top:8px;font-size:13px;color:#444;line-height:1.5}
+.detail b{color:#1b1b1a;font-weight:600}
+.tag{display:inline-block;background:#F1EFE8;color:#444441;font-size:11px;padding:1px 7px;border-radius:5px;margin:2px 4px 0 0}
 canvas{max-height:220px}
 </style></head><body>
 <h1>ThreatSight</h1>
-<div class="sub">WAF/web-log threat analyzer &middot; signature + anomaly &middot; MITRE ATT&CK</div>
+<div class="sub">AI-agent–powered detection &amp; response · web/WAF logs · MITRE ATT&CK</div>
 <div class="bar"><input id="log" value="data/sample/access.log"><button onclick="load()">Analyze</button></div>
 <div class="grid" id="cards"></div>
 <div class="panel"><h2>Activity timeline (events per hour)</h2><canvas id="tl"></canvas></div>
@@ -26,28 +30,36 @@ canvas{max-height:220px}
   <div class="panel" style="margin:0"><h2>Severity</h2><canvas id="sev"></canvas></div>
   <div class="panel" style="margin:0"><h2>Detection layer</h2><canvas id="lay"></canvas></div>
 </div>
-<div class="panel"><h2>Detections by technique</h2><canvas id="tech"></canvas></div>
-<div class="panel"><h2>Recent detections</h2><div id="feed"></div></div>
+<div class="panel"><h2>ATT&CK coverage (tactic &#8594; technique)</h2><div id="coverage"></div></div>
+<div class="panel"><h2>Detections (ATT&CK detail)</h2><div id="feed"></div></div>
 <script>
 const SEV={P1:'#E24B4A',P2:'#EF9F27',P3:'#378ADD',INFO:'#888780'};
-let charts={};
-function donut(id,obj,colors){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:Object.keys(obj),datasets:[{data:Object.values(obj),backgroundColor:colors,borderWidth:0}]},options:{cutout:'60%'}});}
+let ch={};
+function donut(id,o,c){if(ch[id])ch[id].destroy();ch[id]=new Chart(document.getElementById(id),{type:'doughnut',data:{labels:Object.keys(o),datasets:[{data:Object.values(o),backgroundColor:c,borderWidth:0}]},options:{cutout:'60%'}});}
+function esc(s){return (s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 async function load(){
   const log=document.getElementById('log').value;
-  const r=await fetch('/api/analyze?log='+encodeURIComponent(log));
-  const d=await r.json();
+  const d=await (await fetch('/api/analyze?log='+encodeURIComponent(log))).json();
   if(d.error){document.getElementById('cards').innerHTML='<div class="card">'+d.error+'</div>';return;}
-  document.getElementById('cards').innerHTML=[
-    ['Events analysed',d.events],['Detections',d.detections],['Critical (P1)',d.p1],
-    ['Attacker IPs',d.attacker_ips],['ATT&CK techniques',d.techniques]
-  ].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="num">${v}</div></div>`).join('');
-  if(charts.tl)charts.tl.destroy();
-  charts.tl=new Chart(document.getElementById('tl'),{type:'line',data:{labels:Object.keys(d.timeline),datasets:[{data:Object.values(d.timeline),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,.15)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+  document.getElementById('cards').innerHTML=[['Events analysed',d.events],['Detections',d.detections],['Critical (P1)',d.p1],['Attacker IPs',d.attacker_ips],['ATT&CK techniques',d.techniques]].map(([l,v])=>`<div class="card"><div class="lbl">${l}</div><div class="num">${v}</div></div>`).join('');
+  if(ch.tl)ch.tl.destroy();
+  ch.tl=new Chart(document.getElementById('tl'),{type:'line',data:{labels:Object.keys(d.timeline),datasets:[{data:Object.values(d.timeline),borderColor:'#378ADD',backgroundColor:'rgba(55,138,221,.15)',fill:true,tension:.3}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
   donut('sev',d.severity,Object.keys(d.severity).map(s=>SEV[s]||'#888'));
   donut('lay',d.by_layer,['#534AB7','#1D9E75']);
-  if(charts.tech)charts.tech.destroy();
-  charts.tech=new Chart(document.getElementById('tech'),{type:'bar',data:{labels:Object.keys(d.by_technique),datasets:[{data:Object.values(d.by_technique),backgroundColor:'#534AB7'}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}});
-  document.getElementById('feed').innerHTML=d.feed.map(f=>`<div class="row"><span class="sev s${f.severity}">${f.severity}</span><span class="nm">${f.name}</span><span class="ip">${f.ip}</span><span class="meta">${f.technique} &middot; conf ${f.confidence}</span></div>`).join('');
+  document.getElementById('coverage').innerHTML=(d.coverage||[]).map(t=>`<div style="margin-bottom:10px"><div style="font-weight:600;font-size:13px;color:#26215C;margin-bottom:4px">${esc(t.tactic)}</div>${t.techniques.map(x=>`<span class="tag" style="background:#EEEDFE;color:#26215C">${esc(x.technique)} ${esc(x.name)} ×${x.count}</span>`).join('')}</div>`).join('');
+  document.getElementById('feed').innerHTML=d.feed.map(f=>{
+    const ds=(f.data_sources||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
+    const mit=(f.mitigations||[]).map(x=>`<span class="tag">${esc(x)}</span>`).join('');
+    return `<div class="det">
+      <div class="head"><span class="sev s${f.severity}">${f.severity}</span>
+        <span class="nm">${esc(f.name)}</span><span class="ip">${esc(f.ip)}</span>
+        <span class="meta">${esc(f.technique)} · ${esc(f.tactic)} · conf ${f.confidence}</span></div>
+      <div class="detail">
+        ${f.description?`${esc(f.description)}<br>`:''}
+        ${ds?`<b>Detected via:</b> ${ds}<br>`:''}
+        ${mit?`<b>Mitigations:</b> ${mit}`:''}
+      </div></div>`;
+  }).join('');
 }
 load();
 </script></body></html>
