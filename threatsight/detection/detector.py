@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import polars as pl
 
-from .config import CRED_STUFFING_MIN_FAILURES, CRED_STUFFING_WINDOW
-from .parse import parse_file
+from ..config import CRED_STUFFING_MIN_FAILURES, CRED_STUFFING_WINDOW
+from ..ingest.parse import parse_file
 
 # --- credential stuffing (T1110.004) -------------------------------------------------
 WINDOW = CRED_STUFFING_WINDOW          # tunable in config.py
@@ -92,7 +92,11 @@ def detect_sqli(events) -> list[dict]:
     return out
 
 
-SIGNATURE_DETECTORS = [detect_credential_stuffing, detect_sqli]
+from .malware import MALWARE_DETECTORS  # web shell (T1505.003) + HTTP C2 beacon (T1071.001)
+
+# Deterministic per-technique detectors. Web-delivered malware (web shell, C2 beacon)
+# lives in malware.py but is registered here so it flows through the report/metrics.
+SIGNATURE_DETECTORS = [detect_credential_stuffing, detect_sqli, *MALWARE_DETECTORS]
 
 
 def detect_signatures(events) -> list[dict]:

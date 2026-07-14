@@ -23,7 +23,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
-from .ai_analyze import DEFAULT_MODEL, _make_client
+from ..investigation.ai_analyze import DEFAULT_MODEL, _make_client
 
 CACHE = Path("data/threat_model.json")
 

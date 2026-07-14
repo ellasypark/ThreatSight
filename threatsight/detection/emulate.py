@@ -21,7 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 from .anomaly import detect_anomalies
 from .detector import detect_credential_stuffing
-from .parse import parse_line
+from ..ingest.parse import parse_line
 
 BASE = datetime(2026, 1, 1, 2, 0, 0, tzinfo=timezone.utc)
 BROWSER = "Mozilla/5.0 (Windows NT 10.0) Chrome/126.0"

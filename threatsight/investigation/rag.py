@@ -38,7 +38,7 @@ def build_corpus(path=CORPUS_CACHE) -> list[dict]:
         return json.loads(Path(path).read_text(encoding="utf-8"))
     corpus = []
     try:
-        from .attack import _attack_data
+        from ..enrichment.attack import _attack_data
         data = _attack_data()
         for t in data.get_techniques(remove_revoked_deprecated=True):
             tid = next((r.external_id for r in t.external_references if r.source_name == "mitre-attack"), None)

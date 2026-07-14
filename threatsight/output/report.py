@@ -18,10 +18,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .anomaly import detect_anomalies
-from .attack import get_technique
-from .detector import detect_signatures
-from .parse import parse_file
+from ..detection.anomaly import detect_anomalies
+from ..enrichment.attack import get_technique
+from ..detection.detector import detect_signatures
+from ..ingest.parse import parse_file
 
 OUTPUT = Path("reports/triage-report.md")
 

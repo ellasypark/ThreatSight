@@ -10,9 +10,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from threatsight.anomaly import detect_anomalies
-from threatsight.detector import detect_credential_stuffing, detect_sqli
-from threatsight.parse import parse_line
+from threatsight.detection.anomaly import detect_anomalies
+from threatsight.detection.detector import detect_credential_stuffing, detect_sqli
+from threatsight.ingest.parse import parse_line
 
 BASE = datetime(2026, 1, 1, 3, 0, 0, tzinfo=timezone.utc)
 NORMAL_IPS = [f"10.0.0.{n}" for n in range(1, 21)]

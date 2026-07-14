@@ -17,14 +17,14 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from .anomaly import detect_anomalies
-from .attack import get_technique
-from .detector import detect_signatures
-from .metrics import compute as compute_metrics
-from .owasp import owasp_for
-from .parse import parse_file
-from .threat_model import coverage as threat_coverage
-from .threat_model import summary as threat_summary
+from ..detection.anomaly import detect_anomalies
+from ..enrichment.attack import get_technique
+from ..detection.detector import detect_signatures
+from ..evaluation.metrics import compute as compute_metrics
+from ..enrichment.owasp import owasp_for
+from ..ingest.parse import parse_file
+from ..enrichment.threat_model import coverage as threat_coverage
+from ..enrichment.threat_model import summary as threat_summary
 
 app = FastAPI(title="ThreatSight")
 FRONTEND = Path(__file__).parent / "frontend" / "index.html"

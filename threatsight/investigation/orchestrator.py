@@ -29,10 +29,10 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from .ai_analyze import DEFAULT_MODEL, _make_client
-from .anomaly import detect_anomalies
-from .attack import get_technique
-from .detector import detect_signatures
-from .parse import parse_file
+from ..detection.anomaly import detect_anomalies
+from ..enrichment.attack import get_technique
+from ..detection.detector import detect_signatures
+from ..ingest.parse import parse_file
 
 MAX_STEPS = 6
 

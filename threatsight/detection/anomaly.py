@@ -24,8 +24,8 @@ from __future__ import annotations
 import numpy as np
 import polars as pl
 
-from .config import ANOMALY_MIN_REQUESTS, ANOMALY_Z_THRESHOLD
-from .parse import parse_file
+from ..config import ANOMALY_MIN_REQUESTS, ANOMALY_Z_THRESHOLD
+from ..ingest.parse import parse_file
 
 Z_THRESHOLD = ANOMALY_Z_THRESHOLD    # tunable in config.py
 MIN_REQUESTS = ANOMALY_MIN_REQUESTS

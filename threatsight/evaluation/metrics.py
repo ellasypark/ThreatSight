@@ -17,9 +17,9 @@ from __future__ import annotations
 import random
 from datetime import datetime, timedelta, timezone
 
-from .anomaly import detect_anomalies
-from .detector import detect_signatures
-from .parse import parse_line
+from ..detection.anomaly import detect_anomalies
+from ..detection.detector import detect_signatures
+from ..ingest.parse import parse_line
 
 BROWSER = "Mozilla/5.0 (Windows NT 10.0) Chrome/126.0"
 
@@ -94,6 +94,67 @@ def main() -> None:
     for k in ("signature", "anomaly", "overall"):
         m = r[k]
         print(f"{k:<12}{m['precision']:<11}{m['recall']:<9}{m['fp_rate']}")
+
+
+if __name__ == "__main__":
+    main()
+
+# ── evaluation against a semi-synthetic corpus (real base + injected attacks) ──
+def evaluate_corpus(log_path="data/corpus/access.log",
+                    labels_path="data/corpus/labels.json") -> dict:
+    """Score the detectors against a corpus produced by `threatsight corpus`.
+
+    Unlike compute(), the negatives here are REAL/realistic benign traffic —
+    crawlers, monitors, login typos — so FP rate is meaningful and usually > 0.
+    Reports overall PRF plus how many false positives were 'borderline' (the
+    crawler/monitor traps), which is the number the WAF-tuning work must drive down.
+    """
+    import json
+    from pathlib import Path
+
+    from ..ingest.parse import parse_file
+
+    labels = json.loads(Path(labels_path).read_text(encoding="utf-8"))
+    positives = set(labels["malicious"])
+    benign = set(labels["benign_ips"])
+    borderline = set(labels["borderline_ips"])
+    negatives = benign | borderline
+
+    events = parse_file(log_path)
+    sig = {d["ip"] for d in detect_signatures(events)}
+    anom = {a["ip"] for a in detect_anomalies(events)}
+    flagged = sig | anom
+
+    fp_ips = flagged & negatives
+    result = {
+        "n_events": len(events),
+        "n_positives": len(positives),
+        "n_negatives": len(negatives),
+        "signature": _prf(sig, positives, negatives),
+        "anomaly": _prf(anom, positives, negatives),
+        "overall": _prf(flagged, positives, negatives),
+        "false_positives": sorted(fp_ips),
+        "fp_from_borderline": sorted(fp_ips & borderline),
+        "missed_attacks": {ip: labels["malicious"][ip]["attack"]
+                           for ip in sorted(positives - flagged)},
+    }
+    return result
+
+
+def main_corpus() -> None:
+    r = evaluate_corpus()
+    print(f"Corpus metrics — {r['n_events']} events, "
+          f"{r['n_positives']} attackers vs {r['n_negatives']} benign IPs\n")
+    print(f"{'detector':<12}{'precision':<11}{'recall':<9}{'FP rate'}")
+    for k in ("signature", "anomaly", "overall"):
+        m = r[k]
+        print(f"{k:<12}{m['precision']:<11}{m['recall']:<9}{m['fp_rate']}")
+    if r["false_positives"]:
+        print(f"\nfalse positives ({len(r['false_positives'])}): {r['false_positives']}")
+        if r["fp_from_borderline"]:
+            print(f"  ...of which crawler/monitor traps: {r['fp_from_borderline']}")
+    if r["missed_attacks"]:
+        print(f"\nmissed attacks: {r['missed_attacks']}")
 
 
 if __name__ == "__main__":

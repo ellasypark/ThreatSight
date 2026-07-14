@@ -19,12 +19,12 @@ from pathlib import Path
 
 import typer
 
-from .anomaly import detect_anomalies
-from .attack import get_technique
-from .detector import detect_signatures
-from .generate import main as generate_main
-from .parse import parse_file
-from .report import render
+from .detection.anomaly import detect_anomalies
+from .enrichment.attack import get_technique
+from .detection.detector import detect_signatures
+from .ingest.generate import main as generate_main
+from .ingest.parse import parse_file
+from .output.report import render
 
 app = typer.Typer(
     help="ThreatSight - WAF/web-log threat analyzer (signature + anomaly + LLM), mapped to MITRE ATT&CK.",
@@ -39,9 +39,43 @@ def generate() -> None:
 
 
 @app.command()
+def corpus(
+    base: Path = typer.Option(None, "--base",
+                              help="Real access log (combined format) to use as the benign base. "
+                                   "Omit to synthesise a realistic base with crawler/monitor FP-traps."),
+) -> None:
+    """Build a semi-synthetic evaluation corpus: real/realistic benign traffic + injected
+    attacks, with ground-truth labels. Writes data/corpus/{access.log,labels.json}."""
+    from .ingest.corpus import build_corpus, OUT_LABELS, OUT_LOG
+
+    s = build_corpus(str(base) if base else None)
+    typer.secho(f"Wrote {s['events']} lines to {OUT_LOG}  (base: {s['base']})", fg=typer.colors.GREEN)
+    typer.echo(f"  {s['attacks']} attack IPs · {s['benign']} benign IPs "
+               f"({s['borderline']} borderline crawler/monitor FP-traps)")
+    typer.echo(f"  ground truth: {OUT_LABELS}")
+
+
+@app.command()
+def metrics(
+    corpus: bool = typer.Option(False, "--corpus",
+                                help="Score against data/corpus (real base + injected attacks) "
+                                     "instead of the clean synthetic set."),
+) -> None:
+    """Detection metrics: precision / recall / FP rate on a labelled set."""
+    if corpus:
+        from .evaluation.metrics import main_corpus
+
+        main_corpus()
+    else:
+        from .evaluation.metrics import main as metrics_main
+
+        metrics_main()
+
+
+@app.command()
 def emulate() -> None:
     """Purple-team: simulate attacks (incl. an evasive one) and show detection coverage."""
-    from . import emulate as emu
+    from .detection import emulate as emu
 
     emu.main()
 
@@ -53,7 +87,7 @@ def threat_model_cmd(
 ) -> None:
     """AI-assisted threat modeling: the LLM proposes the ATT&CK/ATLAS techniques the system is
     exposed to, marks coverage/gaps, and caches the profile (needs ANTHROPIC_API_KEY)."""
-    from .threat_model import coverage, generate_threat_model, save_threat_model, summary
+    from .enrichment.threat_model import coverage, generate_threat_model, save_threat_model, summary
 
     if not os.getenv("ANTHROPIC_API_KEY"):
         typer.secho("Set ANTHROPIC_API_KEY first.", fg=typer.colors.RED)
@@ -75,7 +109,7 @@ def llm_scan(
                                     help="JSONL of LLM API requests."),
 ) -> None:
     """Scan LLM request logs for prompt-injection / jailbreak abuse (OWASP-LLM / ATLAS)."""
-    from .llm_abuse import detect_llm_abuse, generate_llm_logs, load_llm_logs
+    from .investigation.llm_abuse import detect_llm_abuse, generate_llm_logs, load_llm_logs
 
     if not log_path.exists():
         generate_llm_logs(log_path)
@@ -93,7 +127,7 @@ def investigate(
     max_steps: int = typer.Option(8, "--max-steps", help="Max agent tool-use steps."),
 ) -> None:
     """Multi-agent investigation: triage -> investigation -> justification (needs ANTHROPIC_API_KEY)."""
-    from .orchestrator import investigate as run_investigation
+    from .investigation.orchestrator import investigate as run_investigation
 
     if not log_path.exists():
         typer.secho(f"Log file not found: {log_path}", fg=typer.colors.RED)
@@ -162,7 +196,7 @@ def ai_analyze_cmd(
     max_lines: int = typer.Option(60, "--max-lines", help="How many log lines to send (cost control)."),
 ) -> None:
     """LLM analysis via Claude declarative extraction (needs ANTHROPIC_API_KEY)."""
-    from .ai_analyze import ai_analyze
+    from .investigation.ai_analyze import ai_analyze
 
     if not log_path.exists():
         typer.secho(f"Log file not found: {log_path}", fg=typer.colors.RED)
