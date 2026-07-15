@@ -18,3 +18,7 @@ jobs:
           pip install -e ".[dev]"
       - name: Run tests
         run: python -m pytest -q
+      - run: pip install bandit pip-audit
+      - run: bandit -r threatsight -ll
+      - run: pip-audit
+      - uses: gitleaks/gitleaks-action@v2
