@@ -1,3 +1,3 @@
-"""log2sigma: turn log anomalies into ATT&CK-mapped Sigma rules."""
+"""ThreatSight: local-first web security investigation."""
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

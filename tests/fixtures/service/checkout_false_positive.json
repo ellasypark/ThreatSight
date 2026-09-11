@@ -1,0 +1,44 @@
+{
+  "service": "Demo storefront",
+  "events": [
+    {
+      "id": "w0",
+      "request_id": "b1",
+      "source": "waf",
+      "window": "baseline",
+      "path": "/checkout",
+      "status": 200,
+      "action": "allow",
+      "rule_id": "",
+      "message": ""
+    },
+    {
+      "id": "w1",
+      "request_id": "r1",
+      "source": "waf",
+      "window": "current",
+      "path": "/checkout",
+      "status": 403,
+      "action": "block",
+      "rule_id": "SQL-942",
+      "message": "SQL pattern matched customer_note field"
+    }
+  ],
+  "documents": [
+    {
+      "id": "api-checkout",
+      "title": "/checkout API contract",
+      "text": "The /checkout customer_note field accepts free text, including apostrophes and SQL examples. All queries use bound parameters. This is a contract, not proof that a particular request is safe."
+    },
+    {
+      "id": "release-checkout",
+      "title": "/checkout deployment record",
+      "text": "The current release adds customer_note. A staging reproduction of the legitimate note \"select a gift\" was blocked by SQL-942. The previous request without that field passed. Production request contents still need verification."
+    },
+    {
+      "id": "unrelated",
+      "title": "Profile avatars",
+      "text": "Image limits and resizing."
+    }
+  ]
+}

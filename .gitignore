@@ -20,3 +20,8 @@ data/attack/
 .DS_Store
 
 
+
+# Local monitoring state
+*.sqlite
+*.sqlite-*
+data/monitor-demo.jsonl

@@ -4,16 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "threatsight"
-version = "0.1.0"
-description = "WAF/web-log threat analyzer (signature + anomaly + LLM), mapped to MITRE ATT&CK / OWASP / ATLAS."
+version = "0.2.0"
+description = "Local-first web security investigation with service-context retrieval and reproducible evaluation."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Ella (Siyeon) Park" }]
 
-# Core: needed for the deterministic pipeline (parse -> detect -> anomaly -> report -> dashboard).
-# The LLM/RAG/ATT&CK-STIX features import their heavier deps lazily, but they are listed
-# here so `pip install .` yields a fully working tool that matches the README.
+# Local service investigation does not require paid APIs or model downloads.
 dependencies = [
     "pydantic>=2.0",
     "polars>=0.20",
@@ -21,14 +19,15 @@ dependencies = [
     "typer>=0.12",
     "fastapi>=0.110",
     "httpx>=0.27",
-    "anthropic>=0.39",
     "uvicorn>=0.29",
-    "sentence-transformers>=2.2",
-    "mitreattack-python>=3.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+ai = ["anthropic>=0.39"]
+semantic = ["sentence-transformers>=2.2"]
+attack = ["mitreattack-python>=3.0"]
+full = ["anthropic>=0.39", "sentence-transformers>=2.2", "mitreattack-python>=3.0"]
 
 [project.scripts]
 threatsight = "threatsight.cli:app"
@@ -39,3 +38,7 @@ include = ["threatsight*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.setuptools.package-data]
+"threatsight.monitoring" = ["static/*.html", "static/*.css", "static/*.js"]
+"threatsight.output" = ["frontend/*.html"]

@@ -11,7 +11,7 @@ If the dataset/library is unavailable, get_technique() degrades gracefully.
 
 from __future__ import annotations
 
-import urllib.request
+import httpx
 from functools import lru_cache
 from pathlib import Path
 
@@ -27,7 +27,9 @@ def _ensure_dataset() -> None:
         return
     STIX_PATH.parent.mkdir(parents=True, exist_ok=True)
     print("Downloading MITRE ATT&CK STIX dataset (one-time, ~40 MB)...")
-    urllib.request.urlretrieve(STIX_URL, STIX_PATH)
+    response = httpx.get(STIX_URL, timeout=60, follow_redirects=True)
+    response.raise_for_status()
+    STIX_PATH.write_bytes(response.content)
 
 
 @lru_cache(maxsize=1)

@@ -1,0 +1,39 @@
+{
+  "service": "Demo storefront",
+  "events": [
+    {
+      "id": "w6",
+      "request_id": "r1",
+      "source": "waf",
+      "window": "current",
+      "path": "/checkout",
+      "status": 403,
+      "action": "block",
+      "rule_id": "",
+      "message": ""
+    },
+    {
+      "id": "w7",
+      "request_id": "r2",
+      "source": "waf",
+      "window": "current",
+      "path": "/checkout",
+      "status": 200,
+      "action": "allow",
+      "rule_id": "",
+      "message": ""
+    },
+    {
+      "id": "a7",
+      "request_id": "r2",
+      "source": "app",
+      "window": "current",
+      "path": "/checkout",
+      "status": 500,
+      "action": "observe",
+      "rule_id": "",
+      "message": "Database connection failed"
+    }
+  ],
+  "documents": []
+}

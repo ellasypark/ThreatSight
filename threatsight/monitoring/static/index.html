@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ThreatSight · Live Monitor</title><link rel="stylesheet" href="/monitor.css"><script src="/monitor.js" defer></script></head>
+<body><main>
+<header><a class="brand" href="/">◈ THREATSIGHT</a><span id="connection" role="status">Connecting…</span></header>
+<div class="intro"><div><p class="eyebrow">SECURITY & SERVICE HEALTH</p><h1>Your service, in sight.</h1><p>Continuous local monitoring. Evidence before conclusions.</p></div><div class="local">LOCAL-FIRST <span id="model">No paid API</span></div></div>
+<p id="warning" class="warning" role="alert" hidden></p>
+<section class="cards" aria-label="Live metrics"><article><p>App / web requests</p><strong id="requests">—</strong><small id="window">Current window</small></article><article><p>Application error rate</p><strong id="errors">—</strong><small>5xx responses / app requests</small></article><article><p>Active incidents</p><strong id="active">—</strong><small>Within latest 100 incidents</small></article><article><p>WAF blocks · optional</p><strong id="blocks">—</strong><small id="waf-note">WAF data is not required</small></article></section>
+<section class="panel"><div class="section-head"><h2>Request activity</h2><span>Recent dashboard samples</span></div><svg id="chart" viewBox="0 0 900 100" role="img" aria-label="Rolling app request count"><polyline id="line" points="0,95 900,95"/></svg><p class="muted">Each point is a rolling-window count, not requests per second. History starts when this page opens.</p></section>
+<div class="columns"><section class="panel"><div class="section-head"><h2>Log sources</h2><span>Collection health</span></div><div id="sources">Waiting for the collector…</div></section><section class="panel"><h2>Affected routes</h2><div class="scroll"><table><thead><tr><th>Route</th><th>Requests</th><th>5xx</th><th>WAF blocks</th></tr></thead><tbody id="routes"></tbody></table></div></section></div>
+<section class="panel"><div class="section-head"><h2>Incident timeline</h2><span>Latest 100 · stored across restarts</span></div><p class="muted">Signals need investigation. A WAF block is not proof of an attack. Incidents resolve after a quiet period.</p><div id="incidents">No incidents yet. Append logs to begin monitoring.</div></section>
+<footer id="timing">Connecting to local collector…</footer>
+</main></body></html>

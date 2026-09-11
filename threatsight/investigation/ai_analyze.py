@@ -59,15 +59,14 @@ SYSTEM = (
 
 
 def _make_client():
-    """Anthropic client. Verification ON by default; only disabled if the user
-    explicitly sets THREATSIGHT_INSECURE_SSL=1 (e.g. on a network that intercepts
-    HTTPS). The default is safe to commit."""
+    """Anthropic client with certificate verification; supports SSL_CERT_FILE."""
     import anthropic
+    import httpx
+    import ssl
 
-    if os.getenv("THREATSIGHT_INSECURE_SSL") == "1":
-        import httpx
-        return anthropic.Anthropic(http_client=httpx.Client(verify=False))
-    return anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
+    context = ssl.create_default_context(cafile=os.getenv("SSL_CERT_FILE"))
+    return anthropic.Anthropic(http_client=httpx.Client(verify=context))
+
 
 
 def ai_analyze(log_lines: list[str], model: str = DEFAULT_MODEL) -> AIAnalysis:
