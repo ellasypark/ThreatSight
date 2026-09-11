@@ -2,66 +2,63 @@
 
 [![CI](https://github.com/ellasypark/ThreatSight/actions/workflows/ci.yml/badge.svg)](https://github.com/ellasypark/ThreatSight/actions/workflows/ci.yml)
 
-**Local-first web security investigation for small teams — no paid API required.**
+**Local-first security and service monitoring for small teams. WAF optional. No paid API required.**
 
-Built from experience with expensive, complex enterprise security tools. ThreatSight helps investigate one question: **is this an attack, legitimate traffic blocked by the WAF, or an application failure?**
+Built from experience with expensive, complex enterprise security tools. ThreatSight continuously reads local web/application logs, tracks incidents, and shows a live dashboard. Optional local AI investigates new or materially changed incidents.
 
 ## System
 
-```text
-WAF + application events ──▶ Validate & calculate route metrics
-                                       │
-API contracts / release notes ──▶ BM25 context retrieval (RAG mode)
-                                       │
-                                       ▼
-                          Rules or local LLM (Ollama)
-                                       │
-                                       ▼
-                          Evidence-reference validation
-                                       │
-                                       ▼
-                     HTML / JSON incident report
-                 Findings · evidence · gaps · next checks
+```mermaid
+flowchart TD
+    A[Application JSONL / nginx access logs] --> C[Continuous file collector]
+    B[Optional WAF JSONL] --> C
+    C --> D[Rolling metrics & signal detection]
+    D --> E[Persistent incidents · SQLite]
+    E --> F[Live dashboard · refreshes every 2 seconds]
+    E --> G[Optional local AI worker · Ollama]
+    H[API contracts & runbooks · BM25 retrieval] --> G
+    G --> I[Schema & citation-reference validation]
+    I --> E
+    F --> J[Optional incident JSON export]
 ```
 
-- **Service context:** normalized JSON events, shared request IDs, and service documents help investigate incidents; the rules baseline correlates WAF and app events by request ID and route.
-- **Three comparable modes:** conservative rules, logs-only local LLM, or LLM + service-document RAG using BM25 lexical search.
-- **Visible evidence:** route-level block/error rates, cited sources, missing evidence, and next checks. Model context is bounded to 40 current events and 3 documents.
-- **Advisory output:** no production action tools. Invalid evidence references trigger abstention; valid citations do not guarantee correct reasoning.
+- **Live visibility:** application request counts, 5xx rates, affected routes, log-source health, and optional WAF blocks.
+- **Incident tracking:** repeated errors, authentication failures, suspicious request patterns, traffic spikes, and WAF blocks; first/last seen, automatic quiet-period resolution, and reopening.
+- **Durable collection:** SQLite checkpoints survive restarts; supports common file rotation/truncation and incomplete log writes.
+- **Optional AI:** a separate local worker investigates new incidents, reopening, or doubled signal counts with a cooldown. Collection continues if the model fails. Service documents enable lexical RAG.
 
-## Quick start
+## Run
 
-Python 3.12+. From this repository's checkout:
+Python 3.12+. From the repository checkout:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 
-# Free, offline rules baseline — open the generated HTML in a browser
-threatsight service-investigate tests/fixtures/service/app_error.json \
-  --output reports/service-report.html
+threatsight monitor /path/to/nginx/access.log
 ```
 
-For local AI, install and start [Ollama](https://docs.ollama.com/quickstart), then:
+Open **http://127.0.0.1:8765**. Keep the process running; new log lines appear automatically. Multiple file paths are supported. No WAF is needed.
+
+To try synthetic live traffic, start `threatsight monitor data/monitor-demo.jsonl`, then run this in another terminal:
+
+```bash
+python -m threatsight.monitoring.demo
+```
+
+For automatic local AI, install/start [Ollama](https://docs.ollama.com/quickstart), then:
 
 ```bash
 ollama pull llama3.2:3b
-threatsight service-investigate tests/fixtures/service/checkout_false_positive.json \
-  --mode rag --model llama3.2:3b --output reports/checkout.html
+threatsight monitor /path/to/app.jsonl --model llama3.2:3b
+# Add --documents /path/to/documents.json to enable service-context RAG.
 ```
 
-Use `--mode llm` to compare without retrieved documents. Local inference uses your hardware; there is no paid API fallback. Inputs currently use a [normalized JSON format](docs/service-investigation.md), not native vendor exports.
+## Scope & evaluation
 
-## Evaluation
+This is an early **single-process, local file monitor**, not a hosted SIEM. Monitoring windows use collection time; existing log contents are backfilled on first use. Rules are heuristic signals, not confirmed attacks. The UI is loopback-only. [Formats, thresholds, retention & operational limits →](docs/monitoring.md)
 
-```bash
-threatsight service-eval tests/fixtures/service/manifest.json \
-  --modes rules,llm,rag --model llama3.2:3b
-```
+The separate investigation evaluator measures classification, abstention, retrieval Recall@3, citation-reference errors, tokens, and latency. On six synthetic development cases, rules scored 4/6 and the local 3B LLM/RAG each scored 2/6. **AI has not yet outperformed the baseline.** These results do not benchmark the live monitor. [Measured results →](reports/service-evaluation.md)
 
-Reports precision/recall, abstention, retrieval Recall@3, citation-reference errors, tokens, and p50/p95 latency.
-
-**Current result:** on six synthetic development cases, rules classified 4/6 correctly; the local 3B LLM and RAG modes each classified 2/6 correctly. AI has not yet outperformed the baseline. These are development checks, not a production benchmark. [Measured results and limitations →](reports/service-evaluation.md)
-
-[Input & evaluation details](docs/service-investigation.md) · [Existing access-log detection pipeline](docs/legacy-pipeline.md) · [MIT License](LICENSE)
+[Investigation & RAG details](docs/service-investigation.md) · [Original access-log pipeline](docs/legacy-pipeline.md) · [MIT License](LICENSE)

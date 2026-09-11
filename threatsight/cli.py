@@ -263,5 +263,27 @@ def service_eval(
         raise typer.Exit(1)
 
 
+@app.command()
+def monitor(
+    logs: list[Path] = typer.Argument(..., help="nginx combined logs or application JSONL; WAF optional"),
+    db: Path = typer.Option(Path("data/monitor.sqlite"), help="Persistent local monitoring state"),
+    model: str = typer.Option(None, help="Optional installed Ollama model; AI is off by default"),
+    documents: Path = typer.Option(None, help="Optional JSON list of service documents for RAG"),
+    interval: float = typer.Option(2, min=0.1, help="Collector polling interval in seconds"),
+    port: int = typer.Option(8765, min=1024, max=65535),
+) -> None:
+    """Continuously monitor local logs and serve a live dashboard on loopback."""
+    import uvicorn
+    from .monitoring.core import Monitor
+    from .monitoring.server import create_app
+    try:
+        instance = Monitor(logs, db, model=model, documents=documents, interval=interval)
+    except Exception as exc:
+        typer.echo(f"Monitor setup failed: {exc}", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"ThreatSight live monitor: http://127.0.0.1:{port} (Ctrl+C to stop)")
+    uvicorn.run(create_app(instance), host="127.0.0.1", port=port)
+
+
 if __name__ == "__main__":
     app()

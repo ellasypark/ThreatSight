@@ -38,3 +38,7 @@ include = ["threatsight*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.setuptools.package-data]
+"threatsight.monitoring" = ["static/*.html", "static/*.css", "static/*.js"]
+"threatsight.output" = ["frontend/*.html"]
