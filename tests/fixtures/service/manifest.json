@@ -1,0 +1,41 @@
+[
+  {
+    "file": "checkout_false_positive.json",
+    "expected": "false_positive_suspected",
+    "relevant_documents": [
+      "api-checkout",
+      "release-checkout"
+    ]
+  },
+  {
+    "file": "attack.json",
+    "expected": "attack_suspected",
+    "relevant_documents": [
+      "api-admin"
+    ]
+  },
+  {
+    "file": "app_error.json",
+    "expected": "app_error",
+    "relevant_documents": [
+      "runbook-payment"
+    ]
+  },
+  {
+    "file": "unknown.json",
+    "expected": "insufficient_evidence",
+    "relevant_documents": []
+  },
+  {
+    "file": "injection.json",
+    "expected": "insufficient_evidence",
+    "relevant_documents": [
+      "search-contract"
+    ]
+  },
+  {
+    "file": "conflicting.json",
+    "expected": "insufficient_evidence",
+    "relevant_documents": []
+  }
+]

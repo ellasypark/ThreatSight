@@ -18,6 +18,8 @@ jobs:
           pip install -e ".[dev]"
       - name: Run tests
         run: python -m pytest -q
+      - name: Offline service evaluation
+        run: threatsight service-eval tests/fixtures/service/manifest.json --output /tmp/service-evaluation.json
       - run: pip install bandit pip-audit
       - run: bandit -r threatsight -ll
       - run: pip-audit

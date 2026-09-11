@@ -133,7 +133,7 @@ def investigate(
         typer.secho(f"Log file not found: {log_path}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
     if not os.getenv("ANTHROPIC_API_KEY"):
-        typer.secho('Set ANTHROPIC_API_KEY first (and THREATSIGHT_INSECURE_SSL=1 if your network intercepts HTTPS).',
+        typer.secho('Set ANTHROPIC_API_KEY first (use SSL_CERT_FILE for a trusted corporate CA).',
                     fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
@@ -202,7 +202,7 @@ def ai_analyze_cmd(
         typer.secho(f"Log file not found: {log_path}", fg=typer.colors.RED)
         raise typer.Exit(code=1)
     if not os.getenv("ANTHROPIC_API_KEY"):
-        typer.secho('Set ANTHROPIC_API_KEY first (setx ANTHROPIC_API_KEY "sk-ant-..." then reopen terminal).',
+        typer.secho('Set ANTHROPIC_API_KEY first.',
                     fg=typer.colors.RED)
         raise typer.Exit(code=1)
 
@@ -215,6 +215,52 @@ def ai_analyze_cmd(
             f"[{f.severity}] {tag}: {f.attack_type} ({f.attack_technique_id}) {f.ip} "
             f"conf={f.confidence}\n   {f.explanation}\n   -> {f.recommended_action}"
         )
+
+
+
+@app.command(name="service-investigate")
+def service_investigate(
+    bundle: Path = typer.Argument(..., exists=True, dir_okay=False),
+    mode: str = typer.Option("rules", help="rules, llm, or rag; llm/rag use local Ollama"),
+    model: str = typer.Option(None, help="Installed Ollama model name"),
+    output: Path = typer.Option(None, help="Save .html report or .json result"),
+) -> None:
+    """Distinguish WAF blocks from application failures using a normalized service bundle."""
+    from .service.engine import Bundle, investigate as run
+    from .service.report import render as render_service
+    try:
+        result = run(Bundle.model_validate_json(bundle.read_bytes()), mode, model)
+    except Exception as exc:
+        typer.echo(f"Investigation failed: {exc}", err=True)
+        raise typer.Exit(1)
+    text = render_service(result) if output and output.suffix == ".html" else json.dumps(result, indent=2)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text, encoding="utf-8")
+        typer.echo(f"Report saved to {output}")
+    else:
+        typer.echo(text)
+
+
+@app.command(name="service-eval")
+def service_eval(
+    manifest: Path = typer.Argument(..., exists=True, dir_okay=False),
+    modes: str = typer.Option("rules", help="Comma-separated rules,llm,rag"),
+    model: str = typer.Option(None),
+    output: Path = typer.Option(Path("reports/service-evaluation.json")),
+) -> None:
+    """Compare methods on labeled fixtures; failed model runs remain errors."""
+    from .service.evaluate import evaluate
+    try:
+        result = evaluate(manifest, modes.split(","), model)
+    except Exception as exc:
+        typer.echo(f"Evaluation failed: {exc}", err=True)
+        raise typer.Exit(1)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps(result, indent=2), encoding="utf-8")
+    typer.echo(json.dumps(result["summary"], indent=2))
+    if any(row["errors"] for row in result["summary"].values()):
+        raise typer.Exit(1)
 
 
 if __name__ == "__main__":

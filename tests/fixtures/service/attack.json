@@ -1,0 +1,23 @@
+{
+  "service": "Demo storefront",
+  "events": [
+    {
+      "id": "w2",
+      "request_id": "r1",
+      "source": "waf",
+      "window": "current",
+      "path": "/admin",
+      "status": 403,
+      "action": "block",
+      "rule_id": "SQL-942",
+      "message": "Request attempted UNION SELECT password FROM users"
+    }
+  ],
+  "documents": [
+    {
+      "id": "api-admin",
+      "title": "/admin API contract",
+      "text": "/admin accepts no query parameters. The captured request attempted to extract the users password table. Treat as suspected SQL injection, not confirmed compromise."
+    }
+  ]
+}

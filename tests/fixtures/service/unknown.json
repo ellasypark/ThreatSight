@@ -1,0 +1,17 @@
+{
+  "service": "Demo storefront",
+  "events": [
+    {
+      "id": "w4",
+      "request_id": "r1",
+      "source": "waf",
+      "window": "current",
+      "path": "/search",
+      "status": 403,
+      "action": "block",
+      "rule_id": "SQL-942",
+      "message": ""
+    }
+  ],
+  "documents": []
+}
